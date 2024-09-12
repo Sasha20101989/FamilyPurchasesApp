@@ -1,17 +1,13 @@
-//
-//  FamilyPurchasesAppApp.swift
-//  FamilyPurchasesApp
-//
-//  Created by Aleksander on 11.09.2024.
-//
-
 import SwiftUI
 
 @main
 struct FamilyPurchasesAppApp: App {
+    @StateObject var database = ReportsDatabase.shared // Используем ReportsDatabase для управления отчетами
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            FamiliesOverviewView()
+                .environmentObject(database) // Передаем ReportsDatabase через EnvironmentObject
         }
     }
 }
