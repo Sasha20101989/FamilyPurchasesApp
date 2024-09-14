@@ -1,8 +1,8 @@
 import Foundation
 
-class Family: Identifiable, ObservableObject, Codable {
+class Family: Identifiable, ObservableObject, Codable, Hashable {
     var id = UUID()
-    let name: String
+    var name: String
     var purchases: [Purchase] = []
 
     // Ключи для кодирования и декодирования
@@ -31,6 +31,16 @@ class Family: Identifiable, ObservableObject, Codable {
         try container.encode(name, forKey: .name)
         // Кодируем покупки без @Published
         try container.encode(purchases, forKey: .purchases)
+    }
+    
+    // Реализация протокола Equatable
+    static func == (lhs: Family, rhs: Family) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    // Реализация протокола Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
     
     // Добавление покупки в семью

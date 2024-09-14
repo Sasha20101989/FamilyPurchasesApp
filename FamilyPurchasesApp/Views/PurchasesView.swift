@@ -21,7 +21,7 @@ struct PurchasesView: View {
                     .resizable()
                     .frame(width: 40, height: 40)
                     .foregroundColor(.blue)
-                    .padding(.leading)
+                    
 
                 Spacer()
 
@@ -37,7 +37,7 @@ struct PurchasesView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
-                .padding(.trailing)
+                
             }
             .padding()
 
@@ -146,7 +146,7 @@ struct PurchasesView: View {
         }
         // Модальное окно с информацией о суммах
         .sheet(isPresented: $showingSummaryModal) {
-            SummaryModalView(purchases: family.purchases)
+            SummaryModalView(purchases: family.purchases, families: nil, report: nil)
         }
     }
 

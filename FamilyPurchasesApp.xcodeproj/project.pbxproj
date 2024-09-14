@@ -13,6 +13,7 @@
 		284902F32C92177A00CC09A3 /* Family.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284902F22C92177A00CC09A3 /* Family.swift */; };
 		284902F52C92179000CC09A3 /* Purchase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284902F42C92179000CC09A3 /* Purchase.swift */; };
 		284902FE2C92233500CC09A3 /* PurchasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 284902FD2C92233500CC09A3 /* PurchasesView.swift */; };
+		28B94A262C95E148007130F2 /* NumericExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28B94A252C95E148007130F2 /* NumericExtensions.swift */; };
 		28E42D452C934B6D0026F85F /* FamiliesOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E42D442C934B6D0026F85F /* FamiliesOverviewView.swift */; };
 		28E42D492C9362150026F85F /* Report.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E42D482C9362150026F85F /* Report.swift */; };
 		28E42D4B2C93631E0026F85F /* ReportsDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E42D4A2C93631E0026F85F /* ReportsDatabase.swift */; };
@@ -28,6 +29,7 @@
 		284902F22C92177A00CC09A3 /* Family.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Family.swift; sourceTree = "<group>"; };
 		284902F42C92179000CC09A3 /* Purchase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Purchase.swift; sourceTree = "<group>"; };
 		284902FD2C92233500CC09A3 /* PurchasesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchasesView.swift; sourceTree = "<group>"; };
+		28B94A252C95E148007130F2 /* NumericExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NumericExtensions.swift; sourceTree = "<group>"; };
 		28E42D442C934B6D0026F85F /* FamiliesOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamiliesOverviewView.swift; sourceTree = "<group>"; };
 		28E42D482C9362150026F85F /* Report.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Report.swift; sourceTree = "<group>"; };
 		28E42D4A2C93631E0026F85F /* ReportsDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportsDatabase.swift; sourceTree = "<group>"; };
@@ -65,6 +67,7 @@
 		284902DF2C92120400CC09A3 /* FamilyPurchasesApp */ = {
 			isa = PBXGroup;
 			children = (
+				28B94A242C95E129007130F2 /* Extensions */,
 				28E42D412C934B0F0026F85F /* Database */,
 				284902F62C9217E200CC09A3 /* Views */,
 				284902F02C92175400CC09A3 /* Models */,
@@ -102,6 +105,14 @@
 				28E42D4E2C93803F0026F85F /* SummaryModalView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		28B94A242C95E129007130F2 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				28B94A252C95E148007130F2 /* NumericExtensions.swift */,
+			);
+			path = Extensions;
 			sourceTree = "<group>";
 		};
 		28E42D412C934B0F0026F85F /* Database */ = {
@@ -183,6 +194,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				28E42D4F2C93803F0026F85F /* SummaryModalView.swift in Sources */,
+				28B94A262C95E148007130F2 /* NumericExtensions.swift in Sources */,
 				284902F52C92179000CC09A3 /* Purchase.swift in Sources */,
 				28E42D452C934B6D0026F85F /* FamiliesOverviewView.swift in Sources */,
 				284902F32C92177A00CC09A3 /* Family.swift in Sources */,

@@ -29,10 +29,11 @@ struct ReportDetailView: View {
                         Image(systemName: "info.circle")
                     }
                     .padding()
-                    .background(Color.blue)
+                    .background(report.families.isEmpty ? Color.gray : Color.blue) // Меняем цвет кнопки
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
+                .disabled(report.families.isEmpty) // Делаем кнопку неактивной, если семей нет
                 .padding(.trailing)
             }
             .padding()
@@ -100,8 +101,7 @@ struct ReportDetailView: View {
         }
         // Модальное окно с информацией о суммах
         .sheet(isPresented: $showingSummaryModal) {
-            // Передаем все покупки из всех семей в модальное окно
-            SummaryModalView(purchases: report.families.flatMap { $0.purchases })
+            SummaryModalView(purchases: report.families.flatMap { $0.purchases }, families: report.families, report: report)
         }
     }
 
