@@ -12,7 +12,7 @@ struct SummaryModalView: View {
 
     var body: some View {
         VStack {
-            if let purchases = purchases {
+            if let purchases = purchases, let families = families {
                 // Показываем информацию по покупкам
                 Text("Суммы покупок")
                     .font(.title)
@@ -26,11 +26,9 @@ struct SummaryModalView: View {
                         .font(.title3)
                         .foregroundColor(.green)
                     
-                    if let families = families {
-                        Text("Разделено на всех: \(perFamilyShare, specifier: "%.2f") ₽ на семью")
-                            .font(.title3)
-                            .foregroundColor(.orange)
-                    }
+                    Text("Разделено на всех: \(perFamilyShare, specifier: "%.2f") ₽ на семью")
+                        .font(.title3)
+                        .foregroundColor(.orange)
                 }
                 .padding()
                 
@@ -58,6 +56,13 @@ struct SummaryModalView: View {
                                     .foregroundColor(.gray)
                             }
                         }
+                    }
+                }
+                
+                if !getFamiliesThatDidNotParticipate(in: purchases, families: families).isEmpty {
+                    List(getFamiliesThatDidNotParticipate(in: purchases, families: families), id: \.id) { family in
+                        Text("\(family.name) не участвовали в покупках.")
+                            .foregroundColor(.gray)
                     }
                 }
                 
@@ -106,41 +111,38 @@ struct SummaryModalView: View {
         }
     }
 
-    // Функция для расчета долгов по семьям
     private func calculateFamilyDebts(families: [Family]) {
-        // Считаем общую сумму всех покупок, которые участвуют в расчете
-        let totalSharedAmount = families.flatMap { $0.purchases }
-            .filter { $0.isShared }
-            .reduce(0) { $0 + $1.amount }
-            .rounded(toPlaces: 2)
-        
-        // Если сумма покупок равна 0, то возвращаем пустой результат
-        guard totalSharedAmount > 0 else {
-            familyDebts = []
-            return
-        }
-
-        // Количество семей
-        let familyCount = families.count
-
-        // Рассчитываем среднюю сумму на семью
-        let averageAmount = (totalSharedAmount / Double(familyCount)).rounded(toPlaces: 2)
-
-        // Определяем для каждой семьи их итоговую сумму и долг/излишек
         var familyBalances: [Family: Double] = [:]
+
+        // Обрабатываем все покупки
         for family in families {
-            let familyTotal = family.purchases.filter { $0.isShared }
-                .reduce(0) { $0 + $1.amount }
-                .rounded(toPlaces: 2)
-            familyBalances[family] = (familyTotal - averageAmount).rounded(toPlaces: 2)
+            for purchase in family.purchases {
+                if purchase.isShared {
+                    // Если покупка общая, делим на всех семей
+                    let amountPerFamily = (purchase.amount / Double(families.count)).rounded(toPlaces: 2)
+                    for family in families {
+                        familyBalances[family, default: 0] -= amountPerFamily
+                    }
+                    familyBalances[family, default: 0] += purchase.amount
+                } else {
+                    // Если покупка частная, делим только на участвующие семьи
+                    let participatingFamilies = families.filter { purchase.participatingFamilies.contains($0.id) }
+                    let amountPerFamily = (purchase.amount / Double(participatingFamilies.count)).rounded(toPlaces: 2)
+                    
+                    for family in participatingFamilies {
+                        familyBalances[family, default: 0] -= amountPerFamily
+                    }
+                    familyBalances[family, default: 0] += purchase.amount
+                }
+            }
         }
 
-        // Рассчитываем задолженности
+        // Рассчитываем итоговые долги
         var debts: [(family: Family, debt: Double, creditors: [(Family, Double)])] = []
         var familyBalancesCopy = familyBalances // Копируем баланс для изменений
+
         for (family, balance) in familyBalances {
             if balance < 0 {
-                // Если семья потратила меньше, добавляем её в должники
                 var creditors: [(Family, Double)] = []
                 var balanceToPay = -balance
                 for (creditorFamily, creditorBalance) in familyBalancesCopy where creditorBalance > 0 {
@@ -153,11 +155,29 @@ struct SummaryModalView: View {
                     if balanceToPay == 0 { break }
                 }
                 debts.append((family, balance, creditors))
+            } else if balance > 0 {
+                debts.append((family, balance, [])) // Переплатили
             } else {
-                debts.append((family, balance, [])) // Добавляем все семьи, даже если они заплатили ровно свою долю
+                debts.append((family, balance, [])) // Заплатили ровно
             }
         }
 
         familyDebts = debts
     }
+
+
+    // Получение семей, которые участвовали в разделении покупок
+    private func getFamiliesThatParticipated(in purchases: [Purchase], families: [Family]) -> [Family] {
+        let participatingFamilyIDs = Set(purchases.flatMap { $0.participatingFamilies })
+        let participatingFamilies = families.filter { participatingFamilyIDs.contains($0.id) || $0.purchases.contains { $0.isShared } }
+        return participatingFamilies
+    }
+
+    // Получение семей, которые не участвовали в разделении покупок
+    private func getFamiliesThatDidNotParticipate(in purchases: [Purchase], families: [Family]) -> [Family] {
+        let participatingFamilyIDs = Set(purchases.flatMap { $0.participatingFamilies })
+        let nonParticipatingFamilies = families.filter { !participatingFamilyIDs.contains($0.id) && !$0.purchases.contains { $0.isShared } }
+        return nonParticipatingFamilies
+    }
+
 }

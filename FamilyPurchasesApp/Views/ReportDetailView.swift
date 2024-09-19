@@ -66,7 +66,7 @@ struct ReportDetailView: View {
             // Список семей в отчете
             List {
                 ForEach(report.families) { family in
-                    NavigationLink(destination: PurchasesView(family: family)) {
+                    NavigationLink(destination: PurchasesView(family: family, families: report.families)) {
                         Text(family.name)
                     }
                     .swipeActions {

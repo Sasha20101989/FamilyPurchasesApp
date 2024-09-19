@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PurchasesView: View {
     @ObservedObject var family: Family
+    var families: [Family]
     @EnvironmentObject var database: ReportsDatabase // Подключаем базу данных
     @State private var purchaseName: String = ""
     @State private var purchaseAmount: String = ""
@@ -11,6 +12,10 @@ struct PurchasesView: View {
     @State private var sharedSum: Double = 0.0
     @State private var showingDeleteConfirmation = false // Флаг для показа подтверждения удаления
     @State private var showingSummaryModal = false // Для показа модального окна с суммами
+    @State private var selectedFamilies: Set<UUID> = [] // Выбранные семьи для текущей покупки
+    @State private var sharedPurchases: [Purchase] = [] // Покупки, разделенные с другими семьями
+    @State private var starredPurchases: Set<String> = [] // Покупки с одинаковыми названиями
+    @State private var showInfoForPurchase: Purchase? = nil // Покупка, для которой показываем информацию
 
     var body: some View {
         VStack {
@@ -21,8 +26,6 @@ struct PurchasesView: View {
                     .resizable()
                     .frame(width: 40, height: 40)
                     .foregroundColor(.blue)
-                    
-
                 Spacer()
 
                 // Кнопка для открытия модального окна с общей суммой
@@ -37,7 +40,6 @@ struct PurchasesView: View {
                     .foregroundColor(.white)
                     .cornerRadius(10)
                 }
-                
             }
             .padding()
 
@@ -54,6 +56,41 @@ struct PurchasesView: View {
             // Переключатель: участвует ли покупка в общем расчёте
             Toggle("Участвует в общем расчёте", isOn: $isShared)
                 .padding()
+                .disabled(purchaseName.isEmpty || purchaseAmount.isEmpty)
+
+            if !isShared && !purchaseName.isEmpty && !purchaseAmount.isEmpty {
+                // Если покупка не общая, показать список для выбора участвующих семей
+                Text("Выберите семьи, которые участвуют в покупке:")
+                    .font(.headline)
+                    .padding(.top)
+
+                List(families, id: \.id) { otherFamily in
+                    Button(action: {
+                        if selectedFamilies.contains(otherFamily.id) {
+                            if otherFamily.id != family.id {
+                                selectedFamilies.remove(otherFamily.id)
+                            }
+                        } else {
+                            selectedFamilies.insert(otherFamily.id)
+                        }
+                        if selectedFamilies.count == families.count {
+                            isShared = true
+                        } else {
+                            isShared = false
+                        }
+                    }) {
+                        HStack {
+                            Text(otherFamily.name)
+                            Spacer()
+                            if selectedFamilies.contains(otherFamily.id) || otherFamily.id == family.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
+                    .disabled(otherFamily.id == family.id)
+                }
+            }
 
             HStack {
                 // Кнопка добавления или изменения покупки
@@ -85,36 +122,112 @@ struct PurchasesView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity) // Обеспечивает одинаковую ширину для обеих кнопок
+            .frame(maxWidth: .infinity)
             .padding(.horizontal)
 
             // Список покупок с возможностью удаления свайпом
-            List {
-                ForEach(family.purchases) { purchase in
-                    HStack {
+            if selectedPurchase == nil || isShared {
+                List {
+                    // Покупки текущей семьи
+                    ForEach(family.purchases) { purchase in
                         VStack(alignment: .leading) {
-                            Text(purchase.name)
-                            Text("Сумма: \(purchase.amount, specifier: "%.2f")")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(purchase.name)
+                                        .font(.headline)
+                                    Text("Сумма: \(purchase.amount, specifier: "%.2f")")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+
+                                // Иконка для показа дополнительной информации
+                                if starredPurchases.contains(purchase.name) {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(.blue)
+                                        .onTapGesture {
+                                            withAnimation {
+                                                showInfoForPurchase = showInfoForPurchase == purchase ? nil : purchase
+                                            }
+                                        }
+                                }
+                            }
+
+                            // Анимированное появление информации только для покупок, которые есть у других семей
+                            if showInfoForPurchase == purchase && starredPurchases.contains(purchase.name) {
+                                Text("Эта покупка также имеется у других семей.")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                                    .padding(.top, 4)
+                                    .transition(.opacity.combined(with: .slide))
+                            }
+
+                            // Покупки, разделенные с другими семьями
+                            if !purchase.isShared && !purchase.participatingFamilies.filter({ $0 != family.id }).isEmpty {
+                                Text("Разделено с:")
+                                    .font(.subheadline)
+                                    .padding(.top, 4)
+                                    .foregroundColor(.blue)
+
+                                ForEach(purchase.participatingFamilies.filter { $0 != family.id }, id: \.self) { familyID in
+                                    if let otherFamily = families.first(where: { $0.id == familyID }) {
+                                        Text(otherFamily.name)
+                                            .font(.caption)
+                                            .padding(.leading, 16)
+                                    }
+                                }
+                            }
                         }
-                        Spacer()
-                        
-                        // Отметка, если покупка не участвует в общем расчёте
-                        if !purchase.isShared {
-                            Text("Не участвует")
-                                .foregroundColor(.red)
+                        .contentShape(Rectangle()) // Позволяет выделять покупку при клике на пустое место
+                        .onTapGesture {
+                            selectPurchaseForEditing(purchase) // Покупка будет выбрана для редактирования
+                            withAnimation {
+                                showInfoForPurchase = purchase // Отображаем уведомление с анимацией только для покупок с общими названиями
+                            }
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                selectedPurchase = purchase
+                                showingDeleteConfirmation = true
+                            } label: {
+                                Label("Удалить", systemImage: "trash")
+                            }
                         }
                     }
-                    .onTapGesture {
-                        selectPurchaseForEditing(purchase)
-                    }
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            selectedPurchase = purchase
-                            showingDeleteConfirmation = true // Показать подтверждение
-                        } label: {
-                            Label("Удалить", systemImage: "trash")
+
+                    // Покупки других семей
+                    if !sharedPurchases.isEmpty {
+                        Section(header: Text("Разделенные с вами покупки")) {
+                            ForEach(sharedPurchases) { purchase in
+                                VStack(alignment: .leading) {
+                                    HStack {
+                                        Text(purchase.name)
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("Сумма: \(purchase.amount, specifier: "%.2f")")
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+                                    }
+
+                                    if starredPurchases.contains(purchase.name) {
+                                        Image(systemName: "exclamationmark.circle.fill")
+                                            .foregroundColor(.blue)
+                                            .onTapGesture {
+                                                withAnimation {
+                                                    showInfoForPurchase = showInfoForPurchase == purchase ? nil : purchase
+                                                }
+                                            }
+                                    }
+
+                                    if showInfoForPurchase == purchase && starredPurchases.contains(purchase.name) {
+                                        Text("Эта покупка также имеется у других семей.")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                            .padding(.top, 4)
+                                            .transition(.opacity.combined(with: .slide))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -122,16 +235,17 @@ struct PurchasesView: View {
 
             Spacer()
         }
-        .navigationTitle("Покупки \(family.name)") // Заголовок экрана
+        .navigationTitle("Покупки \(family.name)")
         .padding()
         .onAppear {
-            recalculateSums() // Пересчет при открытии экрана
+            selectedFamilies.insert(family.id)
+            recalculateSums()
+            loadSharedPurchases()
+            checkForStarredPurchases()
         }
         .onDisappear {
-            // Сохраняем отчет при уходе с экрана
             database.saveReportsToFile()
         }
-        // Подтверждение удаления покупки
         .alert(isPresented: $showingDeleteConfirmation) {
             Alert(
                 title: Text("Удалить покупку?"),
@@ -144,96 +258,106 @@ struct PurchasesView: View {
                 secondaryButton: .cancel()
             )
         }
-        // Модальное окно с информацией о суммах
         .sheet(isPresented: $showingSummaryModal) {
             SummaryModalView(purchases: family.purchases, families: nil, report: nil)
         }
     }
 
-    // Функция добавления покупки
     private func addPurchase() {
         if let amount = Double(purchaseAmount) {
-            let newPurchase = Purchase(name: purchaseName, amount: amount, isShared: isShared)
+            let newPurchase = Purchase(
+                name: purchaseName,
+                amount: amount,
+                isShared: isShared,
+                participatingFamilies: isShared ? [] : Array(selectedFamilies)
+            )
             family.purchases.append(newPurchase)
-            database.saveReportsToFile() // Сохраняем изменения в базу данных
+            database.saveReportsToFile()
             clearInputFields()
-            recalculateSums() // Пересчет после добавления
+            recalculateSums()
+            checkForStarredPurchases()
         }
     }
 
-    // Функция обновления существующей покупки
     private func updatePurchase(_ purchase: Purchase) {
         if let amount = Double(purchaseAmount), let index = family.purchases.firstIndex(where: { $0.id == purchase.id }) {
             family.purchases[index].name = purchaseName
             family.purchases[index].amount = amount
-            family.purchases[index].isShared = isShared
-            database.saveReportsToFile() // Сохраняем изменения в базу данных
+
+            if selectedFamilies.isEmpty || selectedFamilies == [family.id] {
+                family.purchases[index].isShared = true
+                family.purchases[index].participatingFamilies = []
+            } else {
+                family.purchases[index].isShared = isShared
+                family.purchases[index].participatingFamilies = Array(selectedFamilies)
+            }
+
+            database.saveReportsToFile()
             clearInputFields()
             selectedPurchase = nil
-            recalculateSums() // Пересчет после изменения
+            recalculateSums()
+            checkForStarredPurchases()
         }
     }
 
-    // Функция удаления покупки
     private func deletePurchase(_ purchase: Purchase) {
         if let index = family.purchases.firstIndex(where: { $0.id == purchase.id }) {
             family.purchases.remove(at: index)
             database.saveReportsToFile()
             recalculateSums()
 
-            // Если удаляется выбранная для редактирования покупка, сбрасываем поля
             if selectedPurchase == purchase {
                 clearInputFields()
                 selectedPurchase = nil
             }
+            checkForStarredPurchases()
         }
     }
 
-    // Функция для выбора покупки для редактирования
     private func selectPurchaseForEditing(_ purchase: Purchase) {
         purchaseName = purchase.name
         purchaseAmount = String(format: "%.2f", purchase.amount)
         isShared = purchase.isShared
+        selectedFamilies = Set(purchase.participatingFamilies)
         selectedPurchase = purchase
     }
 
-    // Функция для отмены редактирования
     private func cancelEditing() {
         clearInputFields()
         selectedPurchase = nil
     }
 
-    // Функция для очистки полей ввода
     private func clearInputFields() {
         purchaseName = ""
         purchaseAmount = ""
         isShared = true
+        selectedFamilies = []
     }
 
-    // Функция для расчета общей суммы всех покупок
     private func totalAmount() -> Double {
         return family.purchases.reduce(0) { $0 + $1.amount }
     }
 
-    // Функция для расчета суммы только тех покупок, которые участвуют в общем расчете
     private func sharedAmount() -> Double {
         return family.purchases.filter { $0.isShared }.reduce(0) { $0 + $1.amount }
     }
 
-    // Пересчитываем общие суммы
     private func recalculateSums() {
         totalSum = totalAmount()
         sharedSum = sharedAmount()
     }
-}
 
-struct PurchasesView_Previews: PreviewProvider {
-    static var previews: some View {
-        let sampleFamily = Family(name: "Пример семьи")
-        sampleFamily.purchases.append(Purchase(name: "Хлеб", amount: 1.50, isShared: true))
-        sampleFamily.purchases.append(Purchase(name: "Молоко", amount: 2.00, isShared: false))
-        
-        return PurchasesView(family: sampleFamily)
-            .environmentObject(ReportsDatabase.shared)
+    private func loadSharedPurchases() {
+        sharedPurchases = families
+            .flatMap { $0.purchases }
+            .filter { $0.participatingFamilies.contains(family.id) }
+    }
+
+    private func checkForStarredPurchases() {
+        let allPurchases = families.flatMap { $0.purchases }
+        let duplicatePurchases = Dictionary(grouping: allPurchases, by: { $0.name })
+            .filter { $1.count > 1 }
+            .keys
+        starredPurchases = Set(duplicatePurchases)
     }
 }

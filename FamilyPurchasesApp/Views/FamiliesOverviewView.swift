@@ -107,12 +107,14 @@ struct FamiliesOverviewView: View {
 struct FamiliesOverviewView_Previews: PreviewProvider {
     static var previews: some View {
         let exampleReport = Report(creationDate: Date())
+        
         let family1 = Family(name: "Семья Ивановых")
-        family1.addPurchase(Purchase(name: "Хлеб", amount: 1.50, isShared: true))
-        family1.addPurchase(Purchase(name: "Молоко", amount: 2.00, isShared: false))
-
+        // Здесь создаем покупки с примером UUID или пустым массивом
+        family1.addPurchase(Purchase(name: "Хлеб", amount: 1.50, isShared: true, participatingFamilies: []))
+        family1.addPurchase(Purchase(name: "Молоко", amount: 2.00, isShared: false, participatingFamilies: [UUID()]))
+        
         let family2 = Family(name: "Семья Петровых")
-        family2.addPurchase(Purchase(name: "Мясо", amount: 5.00, isShared: true))
+        family2.addPurchase(Purchase(name: "Мясо", amount: 5.00, isShared: true, participatingFamilies: []))
 
         exampleReport.addFamily(family1)
         exampleReport.addFamily(family2)
@@ -122,3 +124,4 @@ struct FamiliesOverviewView_Previews: PreviewProvider {
         return FamiliesOverviewView().environmentObject(ReportsDatabase.shared)
     }
 }
+
